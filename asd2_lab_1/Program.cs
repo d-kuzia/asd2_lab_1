@@ -7,7 +7,8 @@ class ExternalSort
 {
     static void Main(string[] args)
     {
-        string inputFilePath = "random_numbers.txt";
+        // Default sort ----------------------------------------------------------------------------
+        /*string inputFilePath = "random_numbers.txt";
         string tempFolder = "temp";
         string outputFilePath = "sorted_numbers.txt";
         int fileSizeMB = 10;
@@ -27,8 +28,28 @@ class ExternalSort
 
         // Merging chunks to output file
         MultiWayMerge(tempFolder, outputFilePath);
-        Console.WriteLine("File has been sorted.");
+        Console.WriteLine("File has been sorted.");*/
+        //------------------------------------------------------------------------------------------
 
+        string inputFilePath = "largeFile_1GB.bin";
+        string tempFolder = "temp";
+        string outputFilePath = "sorted_largeFile_1GB.bin";
+        int maxMemorySizeMB = 512;
+
+        GenerateLargeFile(inputFilePath, 1L * 1024 * 1024 * 1024);  // 1gb
+
+        if (!Directory.Exists(tempFolder))
+        {
+            Directory.CreateDirectory(tempFolder);
+        }
+
+        CreateSortedChunks(inputFilePath, tempFolder, maxMemorySizeMB);
+
+        MultiWayMerge(tempFolder, outputFilePath);
+
+        Console.WriteLine("Sort done!");
+
+        // nums to console -------------------------------------------------------------------------
         /*using (BinaryReader reader = new BinaryReader(File.Open(outputFilePath, FileMode.Open)))
         {
             while (reader.BaseStream.Position < reader.BaseStream.Length)
@@ -37,6 +58,7 @@ class ExternalSort
                 Console.WriteLine(number);
             }
         }*/
+        //------------------------------------------------------------------------------------------
     }
 
     static void GenerateRandomFile(string filePath, int count)
@@ -52,7 +74,36 @@ class ExternalSort
         }
     }
 
-    static void CreateSortedChunks(string inputFilePath, string tempFolder, int chunkSize)
+    static void GenerateLargeFile(string filePath, long fileSize)
+    {
+        int bufferSize = 1024 * 1024; // 1mb
+        Random random = new Random();
+
+        using (BinaryWriter writer = new BinaryWriter(File.Open(filePath, FileMode.Create)))
+        {
+            long writtenBytes = 0;
+            while (writtenBytes < fileSize)
+            {
+                int[] buffer = new int[bufferSize / sizeof(int)];
+                for (int i = 0; i < buffer.Length; i++)
+                {
+                    buffer[i] = random.Next();
+                }
+
+                foreach (int number in buffer)
+                {
+                    writer.Write(number);
+                }
+
+                writtenBytes += bufferSize;
+                Console.WriteLine($"{writtenBytes / (1024 * 1024)} MB written...");
+            }
+        }
+
+        Console.WriteLine("1 GB file generation complete.");
+    }
+
+    /*static void CreateSortedChunks(string inputFilePath, string tempFolder, int chunkSize)
     {
         using (BinaryReader reader = new BinaryReader(File.Open(inputFilePath, FileMode.Open)))
         {
@@ -60,6 +111,36 @@ class ExternalSort
             while (reader.BaseStream.Position < reader.BaseStream.Length)
             {
                 // Read chunk
+                int[] chunk = new int[Math.Min(chunkSize, (int)(reader.BaseStream.Length - reader.BaseStream.Position) / sizeof(int))];
+                for (int i = 0; i < chunk.Length; i++)
+                {
+                    chunk[i] = reader.ReadInt32();
+                }
+
+                Array.Sort(chunk);
+
+                // Sorted chunk to temp file
+                string tempFilePath = Path.Combine(tempFolder, $"chunk_{chunkIndex}.bin");
+                using (BinaryWriter writer = new BinaryWriter(File.Open(tempFilePath, FileMode.Create)))
+                {
+                    foreach (int number in chunk)
+                    {
+                        writer.Write(number);
+                    }
+                }
+                chunkIndex++;
+            }
+        }
+    }*/
+    static void CreateSortedChunks(string inputFilePath, string tempFolder, int maxMemorySizeMB)
+    {
+        int chunkSize = (maxMemorySizeMB * 1024 * 1024) / sizeof(int); // Конвертуємо в кількість цілих чисел
+        using (BinaryReader reader = new BinaryReader(File.Open(inputFilePath, FileMode.Open)))
+        {
+            int chunkIndex = 0;
+            while (reader.BaseStream.Position < reader.BaseStream.Length)
+            {
+                // Read 512mb chunk
                 int[] chunk = new int[Math.Min(chunkSize, (int)(reader.BaseStream.Length - reader.BaseStream.Position) / sizeof(int))];
                 for (int i = 0; i < chunk.Length; i++)
                 {
