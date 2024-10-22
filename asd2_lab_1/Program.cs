@@ -101,7 +101,7 @@ class ExternalSort
         }
     }
 
-    // Основна функція
+    // Main
     static void Main(string[] args)
     {
         string inputFilePath = "large_file.txt";
